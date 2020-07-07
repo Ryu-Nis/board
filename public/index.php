@@ -1,8 +1,8 @@
 <?php
-
 // タイムゾーン設定
 date_default_timezone_set('Asia/Tokyo');
-// 変数の初期化
+//キャッシュファイルの設定
+$cache_file = 'cache/cache.csv';
 // 変数の初期化
 $now_date = null;
 $data = null;
@@ -76,14 +76,38 @@ include 'shell/connectionDB.php';
 if( $mysqli->connect_errno ) {
 	$error_message[] = 'データの読み込みに失敗しました。 エラー番号 '.$mysqli->connect_errno.' : '.$mysqli->connect_error;
 } else {
-    $sql = "SELECT view_name,message,post_date FROM message ORDER BY post_date DESC";
-	$res = $mysqli->query($sql);
-	
-	if( $res ) {
-		$message_array = $res->fetch_all(MYSQLI_ASSOC);
+    //DB情報をファイルに格納
+	// キャッシュファイルのタイムスタンプを確認する
+	if(file_exists($cache_file)){
+		// ファイルのタイムスタンプを１分前と比較し、古ければ削除
+		if(filemtime($cache_file) < strtotime(date("Y-m-d H:i:s",strtotime("-1 minute")))){
+		@unlink($cache_file);
+		}
 	}
+
+	// キャッシュファイル存在確認
+	$view_html = @file_get_contents($cache_file);
+
+	if (!$view_html){
+
+		//キャッシュファイルが古ければ、DBからデータを取得する
+		$sql = "SELECT view_name,message,post_date FROM message ORDER BY post_date DESC";
+		$res = $mysqli->query($sql);
 	
-	$mysqli->close();
+		if( $res ) {
+			$message_array = $res->fetch_all(MYSQLI_ASSOC);
+		}
+		$mysqli->close();
+
+		foreach($message_array as $value){
+			$view_html .= $value["view_name"].",";
+			$view_html .= $value["message"].",";
+			$view_html .= $value["post_date"];
+			$view_html .= "\r\n";	
+		}
+		//ファイル出力
+		$result = @file_put_contents($cache_file,$view_html);
+	}
 }
 ?>
 
@@ -120,8 +144,11 @@ if( $mysqli->connect_errno ) {
 	<input type="submit" name="btn_submit" value="書き込む">
 </form>
 <hr>
+
 <section>
-<?php if( !empty($message_array) ): ?>
+<!-- キャッシュファイルが古い場合は、DBから情報を取得する -->
+
+<?php if( !empty($message_array) ){ ?>
 <?php foreach( $message_array as $value ): ?>
 <article>
     <div class="info">
@@ -131,7 +158,31 @@ if( $mysqli->connect_errno ) {
     <p><?php echo nl2br($value['message']); ?></p>
 </article>
 <?php endforeach; ?>
-<?php endif; ?>
+<?php } ?>
+
+<!-- DBからの情報が無い場合はキャッシュファイルから情報を取得する -->
+<?php if( empty($message_array) ){
+		// 読み込み用にtest.csvを開きます。
+		$f = fopen($cache_file, "r");
+		// test.csvの行を1行ずつ読み込みます。
+		while($value = fgetcsv($f)){
+			// 読み込んだ結果を表示します。
+?>
+	<article>
+		<div class="info">
+			<h2><?php echo $value[0]; ?></h2>
+			<time><?php echo date('Y年m月d日 H:i', strtotime($value[2])); ?></time>
+		</div>
+		<p><?php echo nl2br($value[1]); ?></p>
+	</article>
+<?php
+		}
+		// test.csvを閉じます。
+		fclose($f);
+    }
+?>
+
+
 </section>
 </body>
 </html>
