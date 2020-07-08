@@ -2,7 +2,9 @@
 // タイムゾーン設定
 date_default_timezone_set('Asia/Tokyo');
 //キャッシュファイルの設定
-$cache_file = 'cache/cache.csv';
+$cache_file = dirname(__FILE__).'/cache/cache.csv';
+//関数ファイルの呼び出し
+require_once(dirname(__FILE__)."/shell/function.php");
 // 変数の初期化
 $now_date = null;
 $data = null;
@@ -34,81 +36,25 @@ if( !empty($_POST['btn_submit']) ) {
         $clean['message'] = htmlspecialchars( $_POST['message'], ENT_QUOTES);
 	}
     if(empty($error_message)){
-		
-		// データベースに接続
-		include 'shell/connectionDB.php';
-
-		// 接続エラーの確認
-		if( $mysqli->connect_errno ) {
-			$error_message[] = '書き込みに失敗しました。 エラー番号 '.$mysqli->connect_errno.' : '.$mysqli->connect_error;
-		} else {
-            // 文字コード設定
-			$mysqli->set_charset('utf8');
-			
-			// 書き込み日時を取得
-			$now_date = date("Y-m-d H:i:s");
-			
-			// データを登録するSQL作成
-			$sql = "INSERT INTO message (view_name, message, post_date) VALUES ( '$clean[view_name]', '$clean[message]', '$now_date')";
-			
-			// データを登録
-			$res = $mysqli->query($sql);
-		
-			if( $res ) {
-				$_SESSION['success_message'] = 'メッセージを書き込みました。';
-			} else {
-				$error_message[] = '書き込みに失敗しました。';
-			}
-		
-			// データベースの接続を閉じる
-			$mysqli->close();
-		}
+		$now_date = date("Y-m-d H:i:s");
+        $sql = "INSERT INTO message (view_name, message, post_date) VALUES ( '$clean[view_name]', '$clean[message]', '$now_date')";
+		insertDB($sql);
+		//再度読み込んで、最新情報にしたい（キャッシュファイルの読み込み）
 		header('Location: ./');
-    }	
+	}	
 }
 
 //データファイルを読み込んで、表示する
+// キャッシュファイル存在確認→古ければ削除
+confirmCacheFile($cache_file);
+$view_html = @file_get_contents($cache_file);
 
-// データベースに接続
-include 'shell/connectionDB.php';
-
-// 接続エラーの確認
-if( $mysqli->connect_errno ) {
-	$error_message[] = 'データの読み込みに失敗しました。 エラー番号 '.$mysqli->connect_errno.' : '.$mysqli->connect_error;
-} else {
-    //DB情報をファイルに格納
-	// キャッシュファイルのタイムスタンプを確認する
-	if(file_exists($cache_file)){
-		// ファイルのタイムスタンプを１分前と比較し、古ければ削除
-		if(filemtime($cache_file) < strtotime(date("Y-m-d H:i:s",strtotime("-1 minute")))){
-		@unlink($cache_file);
-		}
-	}
-
-	// キャッシュファイル存在確認
-	$view_html = @file_get_contents($cache_file);
-
-	if (!$view_html){
-
-		//キャッシュファイルが古ければ、DBからデータを取得する
-		$sql = "SELECT view_name,message,post_date FROM message ORDER BY post_date DESC";
-		$res = $mysqli->query($sql);
-	
-		if( $res ) {
-			$message_array = $res->fetch_all(MYSQLI_ASSOC);
-		}
-		$mysqli->close();
-
-		foreach($message_array as $value){
-			$view_html .= $value["view_name"].",";
-			$view_html .= $value["message"].",";
-			$view_html .= $value["post_date"];
-			$view_html .= "\r\n";	
-		}
-		//ファイル出力
-		$result = @file_put_contents($cache_file,$view_html);
-	}
+if (!$view_html){
+	// //キャッシュファイルが古ければ、DBからデータを取得する
+	$sql = "SELECT view_name,message,post_date FROM message ORDER BY post_date DESC limit 5";
+	$view_html = selectDB($sql,$cache_file);
 }
+
 ?>
 
 <!DOCTYPE html>
@@ -146,22 +92,9 @@ if( $mysqli->connect_errno ) {
 <hr>
 
 <section>
-<!-- キャッシュファイルが古い場合は、DBから情報を取得する -->
 
-<?php if( !empty($message_array) ){ ?>
-<?php foreach( $message_array as $value ): ?>
-<article>
-    <div class="info">
-        <h2><?php echo $value['view_name']; ?></h2>
-        <time><?php echo date('Y年m月d日 H:i', strtotime($value['post_date'])); ?></time>
-    </div>
-    <p><?php echo nl2br($value['message']); ?></p>
-</article>
-<?php endforeach; ?>
-<?php } ?>
-
-<!-- DBからの情報が無い場合はキャッシュファイルから情報を取得する -->
-<?php if( empty($message_array) ){
+<!-- キャッシュファイルから情報を取得する -->
+<?php
 		// 読み込み用にtest.csvを開きます。
 		$f = fopen($cache_file, "r");
 		// test.csvの行を1行ずつ読み込みます。
@@ -179,11 +112,54 @@ if( $mysqli->connect_errno ) {
 		}
 		// test.csvを閉じます。
 		fclose($f);
-    }
 ?>
-
-
 </section>
+<div><input type="submit" id="aaa" value="全件表示する"></div>
+<div id="test"></div>
+
+<script src="https://code.jquery.com/jquery-3.0.0.min.js"></script>
+    <script>
+      $(function() {
+        $('#aaa').click(
+          function() {
+			$.ajax({
+				type: 'GET',
+				url:  './cache/cache.csv',
+				// data: './sample2.html',
+			}).done(function(data){
+				<?php 
+					// @unlink($cache_file); 
+					$now_date = date("Y-m-d H:i:s");
+					$sql = "SELECT view_name,message,post_date FROM message ORDER BY post_date DESC";
+					$view_html = selectDB($sql,$cache_file);?>
+					// $('#test').html(data);
+				// $('#text').html(data);
+			}).fail(function(data){
+				alert('error');
+			});
+             
+          }
+		
+
+        //     $.ajax({
+        //       url: './sample2.html',
+        //       dataType: 'html',
+        //       success: function(data) {
+        //         $('#text').html(data);
+        //       },
+        //       error: function(data) {
+        //         alert('error');
+        //       }
+             
+        //   	})
+		//   }	
+
+
+
+        );
+      });
+    </script>
+
 </body>
 </html>
 
