@@ -34,6 +34,7 @@ function insertDB($sql){
 }
 
 function selectDB($sql,$cache_file){
+    // @unlink($cache_file);
     //キャッシュファイルが古ければ、DBからデータを取得する
     include 'connectDB.php';
     // 接続エラーの確認

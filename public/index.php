@@ -56,7 +56,6 @@ if (!$view_html){
 }
 
 ?>
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -114,13 +113,13 @@ if (!$view_html){
 		fclose($f);
 ?>
 </section>
-<div><input type="submit" id="aaa" value="全件表示する"></div>
-<div id="test"></div>
+<div><input type="submit" id="test" value="全件表示する"></div>
+<div id=""></div>
 
 <script src="https://code.jquery.com/jquery-3.0.0.min.js"></script>
     <script>
       $(function() {
-        $('#aaa').click(
+        $('#test').click(
           function() {
 			$.ajax({
 				type: 'GET',
@@ -129,10 +128,17 @@ if (!$view_html){
 			}).done(function(data){
 				<?php 
 					// @unlink($cache_file); 
-					$now_date = date("Y-m-d H:i:s");
-					$sql = "SELECT view_name,message,post_date FROM message ORDER BY post_date DESC";
-					$view_html = selectDB($sql,$cache_file);?>
-					// $('#test').html(data);
+					// $now_date = date("Y-m-d H:i:s");
+					// $sql = "SELECT view_name,message,post_date FROM message ORDER BY post_date DESC";
+					// $view_html = selectDB($sql,$cache_file);
+					// $f = fopen($cache_file, "r");
+					// while($value = fgetcsv($f)){
+					// 	echo $value[0];
+					// }
+					// fclose($f);
+					// ?>
+				
+				$('#text').html(data);
 				// $('#text').html(data);
 			}).fail(function(data){
 				alert('error');
@@ -166,11 +172,43 @@ if (!$view_html){
 
 <!-- ・入れたい処理
 ・非同期処理
+→ボタンクリックしなくても動作してしまう
+
+・PDFファイル系の出力
+→ライブラリの利用？
+
 ・クッキーを利用する
-・キャッシュを利用する
 ・画像アップロード
+→DBに登録したいが
+PDO接続でつまづいた。sample2.php
+
 ・バリデーション（正規表現）
 ・スクレイピング
-・PDFファイル系の出力
 ・ユニットテスト（実運用） 
+
+
+
+＜伺いたいこと＞
+
+①
+MVCモデルに沿ったファイル（Function）管理
+
+②
+PDO接続がうまくいかない。
+Connection Refusedの対処法
+（試したこと：charsetおよびport指定）
+
+以下、具体的なコードで２点
+③
+function.php 24
+フォルダ位置が別階層の時の変数の受け渡し
+
+④
+adduser.php 29
+return $error_message[];　エラーだった場合、error_messageの返し方は
+
+
+＜DONE＞
+・キャッシュを利用する
+
 -->

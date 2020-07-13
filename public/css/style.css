@@ -245,6 +245,16 @@ hr {
 	line-height: 1.6em;
 }
 
+.inputID{
+    display: inline-block;
+	margin-right: 10px;
+	padding: 10px 20px;
+	color: #555;
+	font-size: 86%;
+	border-radius: 5px;
+	border: 1px solid #999;
+}
+
 /*-----------------------------------
 掲示板エリア
 -----------------------------------*/
@@ -311,4 +321,18 @@ article.reply::before {
         max-width: 100%;
         height: 70px;
     }
+}
+
+/*-----------------------------------
+ログインページ
+-----------------------------------*/
+
+#inputID {
+    width: 200px;
+	margin-bottom: 20px;
+	padding: 10px;
+	font-size: 86%;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    background: #fff;
 }
